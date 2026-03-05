@@ -10,7 +10,7 @@ import {
   ExclamationCircleOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
-import { customerService, staffService, serviceRecordService, feedbackService } from '../services/storage';
+import { customerService, staffService, serviceRecordService, feedbackService } from '../services/supabaseService';
 import type { ServiceRecord } from '../types';
 import dayjs from 'dayjs';
 
@@ -47,23 +47,32 @@ const Dashboard: React.FC = () => {
     feedback: 0,
     pending: 0,
     processing: 0,
+    urgent: 0,
   });
   const [recentRecords, setRecentRecords] = useState<ServiceRecord[]>([]);
 
   useEffect(() => {
-    const customers = customerService.getAll();
-    const staff = staffService.getAll();
-    const records = serviceRecordService.getAll();
-    const feedback = feedbackService.getAll();
-    setStats({
-      customers: customers.length,
-      staff: staff.length,
-      records: records.length,
-      feedback: feedback.length,
-      pending: records.filter((r) => r.status === 'pending').length,
-      processing: records.filter((r) => r.status === 'processing').length,
-    });
-    setRecentRecords(records.slice(0, 5));
+    const fetchData = async () => {
+      try {
+        const customers = await customerService.getAll();
+        const staff = await staffService.getAll();
+        const records = await serviceRecordService.getAll();
+        const feedback = await feedbackService.getAll();
+        setStats({
+          customers: customers.length,
+          staff: staff.length,
+          records: records.length,
+          feedback: feedback.length,
+          pending: records.filter((r) => r.status === 'pending').length,
+          processing: records.filter((r) => r.status === 'processing').length,
+          urgent: records.filter((r) => r.priority === 'urgent' && r.status !== 'closed').length,
+        });
+        setRecentRecords(records.slice(0, 5));
+      } catch (e) {
+        console.error('获取Dashboard数据失败', e);
+      }
+    };
+    fetchData();
   }, []);
 
   const columns = [
@@ -150,11 +159,7 @@ const Dashboard: React.FC = () => {
           <Card>
             <Statistic
               title="紧急工单"
-              value={
-                serviceRecordService
-                  .getAll()
-                  .filter((r) => r.priority === 'urgent' && r.status !== 'closed').length
-              }
+              value={stats.urgent}
               valueStyle={{ color: '#ff4d4f' }}
               prefix={<ExclamationCircleOutlined />}
             />

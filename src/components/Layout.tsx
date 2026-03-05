@@ -7,8 +7,11 @@ import {
   MessageOutlined,
   TeamOutlined,
   BarChartOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Button, Space } from 'antd';
 
 const { Header, Sider, Content } = Layout;
 
@@ -25,6 +28,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { profile, logout } = useAuth();
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.key === '/staff' && profile?.role !== 'admin') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -53,7 +64,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
-          items={menuItems}
+          items={filteredMenuItems}
           onClick={({ key }) => navigate(key)}
         />
       </Sider>
@@ -69,6 +80,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           }}
         >
           <span style={{ fontSize: 16, fontWeight: 600 }}>售后人员登记平台</span>
+          <Space>
+            <span>你好, <strong>{profile?.name || '用户'}</strong> ({profile?.role === 'admin' ? '管理员' : '售后人员'})</span>
+            <Button type="text" danger icon={<LogoutOutlined />} onClick={logout}>
+              退出登录
+            </Button>
+          </Space>
         </Header>
         <Content style={{ margin: 16 }}>
           <div

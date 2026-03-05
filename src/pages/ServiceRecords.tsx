@@ -3,7 +3,7 @@ import {
   Table, Button, Modal, Form, Input, Select, Space, Popconfirm, Tag, message,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import { serviceRecordService, customerService, staffService } from '../services/storage';
+import { serviceRecordService, customerService, staffService } from '../services/supabaseService';
 import type { ServiceRecord, Customer, Staff } from '../types';
 import dayjs from 'dayjs';
 
@@ -35,12 +35,16 @@ const ServiceRecords: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [form] = Form.useForm();
 
-  const load = () => {
-    setList(serviceRecordService.getAll());
-    setCustomers(customerService.getAll());
-    setStaffList(staffService.getAll().filter((s) => s.status === 'active'));
+  const load = async () => {
+    try {
+      setList(await serviceRecordService.getAll());
+      setCustomers(await customerService.getAll());
+      setStaffList((await staffService.getAll()).filter((s) => s.status === 'active'));
+    } catch (e) {
+      message.error('加载记录失败');
+    }
   };
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   const filtered = list.filter(
     (r) =>
@@ -50,25 +54,29 @@ const ServiceRecords: React.FC = () => {
   );
 
   const handleSubmit = () => {
-    form.validateFields().then((values) => {
-      const customer = customers.find((c) => c.id === values.customerId);
-      const staff = staffList.find((s) => s.id === values.staffId);
-      const data = {
-        ...values,
-        customerName: customer?.name || '',
-        staffName: staff?.name || '',
-      };
-      if (editing) {
-        serviceRecordService.update(editing.id, data);
-        message.success('服务记录已更新');
-      } else {
-        serviceRecordService.create(data);
-        message.success('服务记录已创建');
+    form.validateFields().then(async (values) => {
+      try {
+        const customer = customers.find((c) => c.id === values.customerId);
+        const staff = staffList.find((s) => s.id === values.staffId);
+        const data = {
+          ...values,
+          customerName: customer?.name || '',
+          staffName: staff?.name || '',
+        };
+        if (editing) {
+          await serviceRecordService.update(editing.id, data);
+          message.success('服务记录已更新');
+        } else {
+          await serviceRecordService.create(data);
+          message.success('服务记录已创建');
+        }
+        setModalOpen(false);
+        setEditing(null);
+        form.resetFields();
+        load();
+      } catch (e) {
+        message.error('保存由于网络错误失败');
       }
-      setModalOpen(false);
-      setEditing(null);
-      form.resetFields();
-      load();
     });
   };
 
@@ -78,10 +86,14 @@ const ServiceRecords: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    serviceRecordService.delete(id);
-    message.success('服务记录已删除');
-    load();
+  const handleDelete = async (id: string) => {
+    try {
+      await serviceRecordService.delete(id);
+      message.success('服务记录已删除');
+      load();
+    } catch (e) {
+      message.error('删除失败');
+    }
   };
 
   const columns = [

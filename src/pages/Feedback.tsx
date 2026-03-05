@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Rate, Space, Popconfirm, Tag, message,
+  Table, Button, Modal, Form, Input, Select, Rate, Popconfirm, Tag, message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import { feedbackService, customerService, serviceRecordService } from '../services/storage';
+import { feedbackService, customerService, serviceRecordService } from '../services/supabaseService';
 import type { Feedback, Customer, ServiceRecord } from '../types';
 import dayjs from 'dayjs';
 
@@ -28,35 +28,50 @@ const FeedbackPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [form] = Form.useForm();
 
-  const load = () => {
-    setList(feedbackService.getAll());
-    setCustomers(customerService.getAll());
-    setRecords(serviceRecordService.getAll());
+  const load = async () => {
+    try {
+      const fb = await feedbackService.getAll();
+      const cu = await customerService.getAll();
+      const sr = await serviceRecordService.getAll();
+      setList(fb);
+      setCustomers(cu);
+      setRecords(sr);
+    } catch (e) {
+      message.error('加载记录失败');
+    }
   };
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   const filtered = list.filter(
     (f) => f.customerName.includes(searchText) || f.content.includes(searchText)
   );
 
   const handleSubmit = () => {
-    form.validateFields().then((values) => {
-      const customer = customers.find((c) => c.id === values.customerId);
-      feedbackService.create({
-        ...values,
-        customerName: customer?.name || '',
-      });
-      message.success('反馈已记录');
-      setModalOpen(false);
-      form.resetFields();
-      load();
+    form.validateFields().then(async (values) => {
+      try {
+        const customer = customers.find((c) => c.id === values.customerId);
+        await feedbackService.create({
+          ...values,
+          customerName: customer?.name || '',
+        });
+        message.success('反馈已记录');
+        setModalOpen(false);
+        form.resetFields();
+        load();
+      } catch (e) {
+        message.error('保存失败');
+      }
     });
   };
 
-  const handleDelete = (id: string) => {
-    feedbackService.delete(id);
-    message.success('反馈已删除');
-    load();
+  const handleDelete = async (id: string) => {
+    try {
+      await feedbackService.delete(id);
+      message.success('反馈已删除');
+      load();
+    } catch (e) {
+      message.error('删除失败');
+    }
   };
 
   const columns = [

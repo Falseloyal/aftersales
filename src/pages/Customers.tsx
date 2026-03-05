@@ -3,7 +3,7 @@ import {
   Table, Button, Modal, Form, Input, Space, Popconfirm, message,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import { customerService } from '../services/storage';
+import { customerService } from '../services/supabaseService';
 import type { Customer } from '../types';
 import dayjs from 'dayjs';
 
@@ -14,8 +14,15 @@ const Customers: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [form] = Form.useForm();
 
-  const load = () => setList(customerService.getAll());
-  useEffect(load, []);
+  const load = async () => {
+    try {
+      const data = await customerService.getAll();
+      setList(data);
+    } catch (error) {
+      message.error('加载失败');
+    }
+  };
+  useEffect(() => { load(); }, []);
 
   const filtered = list.filter(
     (c) =>
@@ -25,18 +32,22 @@ const Customers: React.FC = () => {
   );
 
   const handleSubmit = () => {
-    form.validateFields().then((values) => {
-      if (editing) {
-        customerService.update(editing.id, values);
-        message.success('客户信息已更新');
-      } else {
-        customerService.create(values);
-        message.success('客户已添加');
+    form.validateFields().then(async (values) => {
+      try {
+        if (editing) {
+          await customerService.update(editing.id, values);
+          message.success('客户信息已更新');
+        } else {
+          await customerService.create(values);
+          message.success('客户已添加');
+        }
+        setModalOpen(false);
+        setEditing(null);
+        form.resetFields();
+        load();
+      } catch (error) {
+        message.error('保存失败');
       }
-      setModalOpen(false);
-      setEditing(null);
-      form.resetFields();
-      load();
     });
   };
 
@@ -46,10 +57,14 @@ const Customers: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    customerService.delete(id);
-    message.success('客户已删除');
-    load();
+  const handleDelete = async (id: string) => {
+    try {
+      await customerService.delete(id);
+      message.success('客户已删除');
+      load();
+    } catch (error) {
+      message.error('删除失败');
+    }
   };
 
   const columns = [

@@ -9,7 +9,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { Pie, Column, Line, Area } from '@ant-design/charts';
-import { serviceRecordService, feedbackService } from '../services/storage';
+import { serviceRecordService, feedbackService } from '../services/supabaseService';
 import type { ServiceRecord, Feedback } from '../types';
 import dayjs from 'dayjs';
 
@@ -42,8 +42,15 @@ const Analytics: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
   useEffect(() => {
-    setRecords(serviceRecordService.getAll());
-    setFeedbacks(feedbackService.getAll());
+    const fetchData = async () => {
+      try {
+        setRecords(await serviceRecordService.getAll());
+        setFeedbacks(await feedbackService.getAll());
+      } catch (e) {
+        console.error('获取Analytics数据失败', e);
+      }
+    };
+    fetchData();
   }, []);
 
   // ========== 概览卡片指标 ==========
@@ -286,7 +293,7 @@ const Analytics: React.FC = () => {
               data={monthlyTrendData}
               xField="month"
               yField="count"
-              smooth={true}
+              shapeField="smooth"
               height={CHART_HEIGHT}
               style={{ fill: 'l(270) 0:#ffffff 1:#1890ff', fillOpacity: 0.6 }}
               line={{ style: { stroke: '#1890ff', lineWidth: 2 } }}
@@ -343,7 +350,7 @@ const Analytics: React.FC = () => {
                 data={satisfactionTrendData}
                 xField="month"
                 yField="avgRating"
-                smooth={true}
+                shapeField="smooth"
                 height={CHART_HEIGHT}
                 point={{ shapeField: 'circle', sizeField: 3 }}
                 scale={{ y: { domainMin: 0, domainMax: 5 } }}
